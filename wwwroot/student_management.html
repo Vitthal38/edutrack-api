@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EduTrack — Student Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:#0d1117;--surface:#161b22;--surface2:#1c2330;
+    --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+    --text:#e6edf3;--muted:#8b949e;--accent:#3fb950;--accent2:#238636;
+    --blue:#58a6ff;--amber:#d29922;--coral:#f85149;
+  }
+  body { font-family:'DM Sans',sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; font-size:14px; }
+  .sidebar { width:220px; min-height:100vh; background:var(--surface); border-right:1px solid var(--border); display:flex; flex-direction:column; position:fixed; top:0;left:0;bottom:0; z-index:100; }
+  .logo { padding:28px 20px 24px; border-bottom:1px solid var(--border); }
+  .logo span { font-family:'Lora',serif; font-size:20px; font-weight:600; letter-spacing:-0.3px; color:var(--text); }
+  .logo span em { color:var(--accent); font-style:normal; }
+  .nav { padding:16px 0; flex:1; }
+  .nav-label { font-size:10px; font-weight:600; letter-spacing:1.2px; color:var(--muted); text-transform:uppercase; padding:12px 20px 6px; }
+  .nav-item { display:flex; align-items:center; gap:10px; padding:9px 20px; color:var(--muted); cursor:pointer; border-left:2px solid transparent; transition:all 0.2s; font-weight:400; text-decoration:none; }
+  .nav-item:hover { color:var(--text); background:rgba(255,255,255,0.04); }
+  .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:rgba(63,185,80,0.07); font-weight:500; }
+  .nav-item svg { width:16px; height:16px; flex-shrink:0; }
+  .sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); font-size:12px; color:var(--muted); }
+  .sidebar-footer .avatar { width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#58a6ff,#3fb950);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;margin-bottom:8px; }
+  .main { margin-left:220px; flex:1; padding:32px 36px; max-width:calc(100vw - 220px); }
+  .page { display:none; }
+  .page.active { display:block; animation:fadeUp 0.3s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+  .page-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; }
+  .page-header h1 { font-family:'Lora',serif; font-size:26px; font-weight:600; color:var(--text); letter-spacing:-0.4px; }
+  .page-header p { color:var(--muted); margin-top:4px; font-size:13px; }
+  .stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; position:relative; overflow:hidden; transition:border-color 0.2s; }
+  .stat-card:hover { border-color:var(--border2); }
+  .stat-card::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; }
+  .stat-card.s1::before{background:var(--blue)} .stat-card.s2::before{background:var(--accent)} .stat-card.s3::before{background:var(--amber)} .stat-card.s4::before{background:var(--coral)}
+  .stat-label { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:10px; }
+  .stat-value { font-size:30px; font-weight:600; font-family:'Lora',serif; color:var(--text); line-height:1; }
+  .stat-sub { margin-top:6px; font-size:12px; color:var(--muted); }
+  .stat-icon { position:absolute; top:18px;right:18px; opacity:0.15; font-size:28px; }
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:24px; }
+  .panel-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
+  .panel-title { font-size:14px; font-weight:600; color:var(--text); }
+  .btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; border:none; transition:all 0.15s; font-family:'DM Sans',sans-serif; }
+  .btn-primary { background:var(--accent2); color:#fff; border:1px solid var(--accent); }
+  .btn-primary:hover { background:#2ea043; }
+  .btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+  .btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border2); }
+  .btn-ghost:hover { color:var(--text); border-color:rgba(255,255,255,0.2); }
+  .btn-danger { background:rgba(248,81,73,0.1); color:var(--coral); border:1px solid rgba(248,81,73,0.3); }
+  .btn-danger:hover { background:rgba(248,81,73,0.2); }
+  .tbl-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; }
+  thead th { text-align:left; padding:12px 20px; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); border-bottom:1px solid var(--border); }
+  tbody tr { border-bottom:1px solid var(--border); transition:background 0.15s; }
+  tbody tr:last-child { border-bottom:none; }
+  tbody tr:hover { background:rgba(255,255,255,0.03); }
+  td { padding:14px 20px; font-size:13px; color:var(--text); vertical-align:middle; }
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:500; }
+  .badge-green  { background:rgba(63,185,80,0.12);  color:#3fb950; }
+  .badge-blue   { background:rgba(88,166,255,0.12); color:#58a6ff; }
+  .badge-amber  { background:rgba(210,153,34,0.15); color:#d29922; }
+  .badge-coral  { background:rgba(248,81,73,0.12);  color:#f85149; }
+  .av { width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;margin-right:10px;flex-shrink:0; }
+  .cell-user { display:flex; align-items:center; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:20px; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group label { font-size:12px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; }
+  .form-group input, .form-group select { background:var(--surface2); border:1px solid var(--border2); border-radius:6px; padding:9px 12px; font-size:13px; color:var(--text); font-family:'DM Sans',sans-serif; transition:border-color 0.2s; outline:none; }
+  .form-group input:focus, .form-group select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(63,185,80,0.1); }
+  .form-group select option { background:var(--surface2); }
+  .form-footer { display:flex; justify-content:flex-end; gap:10px; padding:16px 20px; border-top:1px solid var(--border); }
+  .search-wrap { position:relative; }
+  .search-wrap input { background:var(--surface2); border:1px solid var(--border2); border-radius:6px; padding:7px 12px 7px 32px; font-size:13px; color:var(--text); font-family:'DM Sans',sans-serif; outline:none; width:220px; transition:border-color 0.2s; }
+  .search-wrap input:focus { border-color:var(--accent); }
+  .search-wrap svg { position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--muted); }
+  ::-webkit-scrollbar{width:6px;height:6px} ::-webkit-scrollbar-track{background:transparent} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:3px}
+  .empty { text-align:center; padding:48px 20px; color:var(--muted); }
+  .empty p { margin-top:8px; font-size:13px; }
+  .toast { position:fixed; bottom:24px;right:24px; padding:12px 18px; border-radius:8px; font-size:13px; font-weight:500; display:none; align-items:center; gap:8px; z-index:999; box-shadow:0 4px 20px rgba(0,0,0,0.4); }
+  .toast.show { display:flex; }
+  .toast.success { background:#238636; color:#fff; }
+  .toast.error   { background:#b91c1c; color:#fff; }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:spin 0.6s linear infinite; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  @media(max-width:900px){.stat-grid{grid-template-columns:1fr 1fr}.form-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="logo"><span>Edu<em>Track</em></span></div>
+  <nav class="nav">
+    <div class="nav-label">Main</div>
+    <a class="nav-item active" onclick="showPage('dashboard',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" onclick="showPage('students',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 20c0-4 2.7-6 6-6h4"/><circle cx="18" cy="17" r="3"/><path d="M18 14v3l2 2"/></svg>
+      Students
+    </a>
+    <a class="nav-item" onclick="showPage('courses',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 19V7l8-4 8 4v12"/><path d="M12 3v16"/><rect x="7" y="11" width="3" height="4"/><rect x="14" y="11" width="3" height="4"/></svg>
+      Courses
+    </a>
+    <a class="nav-item" onclick="showPage('enroll',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+      Enrollments
+    </a>
+    <div class="nav-label" style="margin-top:8px;">Settings</div>
+    <a class="nav-item" onclick="showPage('settings',this)">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </a>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="avatar">AD</div>
+    <div style="font-weight:500;color:var(--text);">Admin</div>
+    <div style="margin-top:2px;">admin@edutrack.io</div>
+  </div>
+</aside>
+
+<main class="main">
+
+  <!-- Dashboard -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header">
+      <div><h1>Dashboard</h1><p>Overview of your institution at a glance</p></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat-card s1"><div class="stat-label">Total Students</div><div class="stat-value" id="stat-students">—</div><div class="stat-sub">Registered this session</div><div class="stat-icon">🎓</div></div>
+      <div class="stat-card s2"><div class="stat-label">Courses</div><div class="stat-value" id="stat-courses">—</div><div class="stat-sub">Active courses available</div><div class="stat-icon">📚</div></div>
+      <div class="stat-card s3"><div class="stat-label">Enrollments</div><div class="stat-value" id="stat-enroll">—</div><div class="stat-sub">Total across all courses</div><div class="stat-icon">✅</div></div>
+      <div class="stat-card s4"><div class="stat-label">Avg. Load</div><div class="stat-value" id="stat-avg">—</div><div class="stat-sub">Courses per student</div><div class="stat-icon">📊</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Recent Students</span>
+        <button class="btn btn-ghost" onclick="showPage('students', document.querySelectorAll('.nav-item')[1])">View all</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Student</th><th>Email</th><th>Age</th><th>Courses Enrolled</th></tr></thead>
+          <tbody id="dash-students-body"><tr><td colspan="4"><div class="empty"><p>Loading…</p></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Students -->
+  <div id="page-students" class="page">
+    <div class="page-header">
+      <div><h1>Students</h1><p>Manage student records</p></div>
+      <button class="btn btn-primary" onclick="showAddStudentForm()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Student
+      </button>
+    </div>
+    <div class="panel" id="add-student-panel" style="display:none;margin-bottom:24px;">
+      <div class="panel-header">
+        <span class="panel-title">New Student</span>
+        <button class="btn btn-ghost" onclick="hideForm('add-student-panel')">Cancel</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Full Name</label><input id="s-name" type="text" placeholder="e.g. Aarav Mehta"/></div>
+        <div class="form-group"><label>Email</label><input id="s-email" type="email" placeholder="e.g. aarav@example.com"/></div>
+        <div class="form-group"><label>Age</label><input id="s-age" type="number" placeholder="18" min="5" max="100"/></div>
+        <div class="form-group"><label>Gender</label>
+          <select id="s-gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-primary" id="btn-save-student" onclick="addStudent()">Save Student</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">All Students</span>
+        <div class="search-wrap">
+          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="student-search" type="text" placeholder="Search students…" oninput="renderStudentTable()"/>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Student</th><th>Email</th><th>Age</th><th>Action</th></tr></thead>
+          <tbody id="student-table-body"><tr><td colspan="5"><div class="empty"><p>Loading…</p></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Courses -->
+  <div id="page-courses" class="page">
+    <div class="page-header">
+      <div><h1>Courses</h1><p>Manage course catalogue</p></div>
+      <button class="btn btn-primary" onclick="showAddCourseForm()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Course
+      </button>
+    </div>
+    <div class="panel" id="add-course-panel" style="display:none;margin-bottom:24px;">
+      <div class="panel-header">
+        <span class="panel-title">New Course</span>
+        <button class="btn btn-ghost" onclick="hideForm('add-course-panel')">Cancel</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Course Name</label><input id="c-name" type="text" placeholder="e.g. Data Structures"/></div>
+        <div class="form-group"><label>Duration</label><input id="c-dur" type="text" placeholder="e.g. 3 months"/></div>
+        <div class="form-group"><label>Category</label>
+          <select id="c-cat"><option>Science</option><option>Engineering</option><option>Arts</option><option>Commerce</option><option>Technology</option></select>
+        </div>
+        <div class="form-group"><label>Seats</label><input id="c-seats" type="number" placeholder="30" min="1"/></div>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-primary" id="btn-save-course" onclick="addCourse()">Save Course</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">All Courses</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Course Name</th><th>Duration</th><th>Category</th><th>Enrolled</th><th>Action</th></tr></thead>
+          <tbody id="course-table-body"><tr><td colspan="6"><div class="empty"><p>Loading…</p></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enrollments -->
+  <div id="page-enroll" class="page">
+    <div class="page-header">
+      <div><h1>Enrollments</h1><p>Assign students to courses</p></div>
+      <button class="btn btn-primary" onclick="showEnrollForm()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Enroll Student
+      </button>
+    </div>
+    <div class="panel" id="enroll-panel" style="display:none;margin-bottom:24px;">
+      <div class="panel-header">
+        <span class="panel-title">New Enrollment</span>
+        <button class="btn btn-ghost" onclick="hideForm('enroll-panel')">Cancel</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label>Student</label><select id="e-student"></select></div>
+        <div class="form-group"><label>Course</label><select id="e-course"></select></div>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-primary" id="btn-save-enroll" onclick="addEnrollment()">Confirm Enrollment</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">All Enrollments</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Student</th><th>Course</th><th>Category</th><th>Action</th></tr></thead>
+          <tbody id="enroll-table-body"><tr><td colspan="5"><div class="empty"><p>Loading…</p></div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="page-settings" class="page">
+    <div class="page-header">
+      <div><h1>Settings</h1><p>Manage system preferences</p></div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">App Settings</span></div>
+      <div class="form-grid">
+        <div class="form-group"><label>API URL</label><input id="api-url" type="text" placeholder="http://localhost:5097"/></div>
+        <div class="form-group"><label>Theme</label>
+          <select id="theme"><option>Dark</option><option>Light</option></select>
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    <span id="toast-msg"></span>
+  </div>
+
+</main>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// MODULE 1 — Security
+// All server-returned strings pass through esc() before innerHTML.
+// Prevents XSS: a malicious name like <script>... becomes harmless.
+// ═══════════════════════════════════════════════════════════════
+const Security = (() => {
+  const CHARS = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' };
+  return { esc: str => String(str ?? '').replace(/[&<>"']/g, c => CHARS[c]) };
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// MODULE 2 — State
+// Single source of truth. No module holds its own copy of data.
+// All writes go through State.set(), which also rebuilds derived
+// structures (enrollCountById) so dashboard is always O(1).
+// ═══════════════════════════════════════════════════════════════
+const State = (() => {
+  const store = {
+    students:        [],
+    courses:         [],
+    enrollments:     [],
+    enrollCountById: {},   // derived: studentId → enrollment count (O(1) lookup)
+    loading: { students: false, courses: false, enrollments: false },
+    errors:  { students: null,  courses: null,  enrollments: null  },
+  };
+
+  return {
+    get: key => store[key],
+
+    set(key, value) {
+      store[key] = value;
+      // Rebuild the O(1) index every time enrollments change
+      // Eliminates the previous O(n²) .filter() inside dashboard .map()
+      if (key === 'enrollments') {
+        store.enrollCountById = value.reduce((acc, e) => {
+          acc[e.studentId] = (acc[e.studentId] || 0) + 1;
+          return acc;
+        }, {});
+      }
+    },
+
+    setLoading: (key, v) => { store.loading[key] = v; },
+    setError:   (key, v) => { store.errors[key]  = v; },
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// MODULE 3 — HTTP
+// Proper API abstraction with:
+//   • Central config (base URL, auth headers — add token here)
+//   • Structured error parsing: reads server's actual error message
+//   • Retry with exponential backoff on NETWORK failures only
+//   • Never retries 4xx/5xx — those are intentional server responses
+// ═══════════════════════════════════════════════════════════════
+const Http = (() => {
+  const cfg = {
+    get baseUrl() { return localStorage.getItem('API_URL') || 'http://localhost:5097'; },
+    retries:    2,
+    retryDelay: 600,
+    headers() {
+      return {
+        'Content-Type': 'application/json',
+        // 'Authorization': `Bearer ${Auth.getToken()}`, // ← add auth here
+      };
+    },
+  };
+
+  class ApiError extends Error {
+    constructor(msg, status) { super(msg); this.name = 'ApiError'; this.status = status; }
+  }
+
+  async function parseError(res) {
+    try {
+      const body = await res.clone().json();
+      // Handle ASP.NET ModelState errors, standard message fields, etc.
+      if (body?.errors) return Object.values(body.errors).flat().join(' ');
+      return body?.message || body?.title || `Server error (${res.status})`;
+    } catch {
+      return await res.text().catch(() => '') || `Request failed (${res.status})`;
+    }
+  }
+
+  async function request(path, opts = {}, attempt = 0) {
+    try {
+      const res = await fetch(`${cfg.baseUrl}${path}`, {
+        ...opts, headers: { ...cfg.headers(), ...opts.headers },
+      });
+      if (!res.ok) throw new ApiError(await parseError(res), res.status);
+      const ct = res.headers.get('content-type') || '';
+      return ct.includes('application/json') ? res.json() : res.text();
+    } catch (err) {
+      if (err instanceof ApiError) throw err;           // 4xx/5xx → no retry
+      if (attempt < cfg.retries) {                      // network error → retry
+        await new Promise(r => setTimeout(r, cfg.retryDelay * Math.pow(2, attempt)));
+        return request(path, opts, attempt + 1);
+      }
+      throw new ApiError(
+        err.message === 'Failed to fetch'
+          ? 'Cannot reach server. Is it running? Check API URL in Settings.'
+          : err.message,
+        0
+      );
+    }
+  }
+
+  return {
+    get:    path       => request(path),
+    post:   (path, d)  => request(path, { method: 'POST',   body: JSON.stringify(d) }),
+    delete: path       => request(path, { method: 'DELETE' }),
+  };
+})();
+
+// Named endpoint definitions — one place to update if routes change
+const StudentAPI    = { getAll: () => Http.get('/api/students'),    create: d => Http.post('/api/students', d),    remove: id => Http.delete(`/api/students/${id}`)    };
+const CourseAPI     = { getAll: () => Http.get('/api/courses'),     create: d => Http.post('/api/courses', d),     remove: id => Http.delete(`/api/courses/${id}`)     };
+const EnrollmentAPI = { getAll: () => Http.get('/api/enrollments'), create: d => Http.post('/api/enrollments', d), remove: id => Http.delete(`/api/enrollments/${id}`) };
+
+// ═══════════════════════════════════════════════════════════════
+// MODULE 4 — Validation
+// Pure functions — no DOM access, easy to unit-test.
+// Returns a human-readable error string or null if valid.
+// ═══════════════════════════════════════════════════════════════
+const Validate = (() => {
+  const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+  return {
+    student(name, email, age) {
+      if (!name || name.length < 3)     return 'Name must be at least 3 characters.';
+      if (!EMAIL.test(email))            return 'Enter a valid email address.';
+      if (!age || age < 5 || age > 100) return 'Age must be between 5 and 100.';
+      return null;
+    },
+    course(name, duration, seats) {
+      if (!name || name.length < 3)          return 'Course name must be at least 3 characters.';
+      if (!duration || duration.length < 2)  return 'Enter a valid duration (e.g. "3 months").';
+      if (!seats || seats < 1 || seats > 500) return 'Seats must be between 1 and 500.';
+      return null;
+    },
+  };
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// MODULE 5 — UI
+// ALL DOM reads and writes live here. The Actions layer never
+// calls document.getElementById — it calls UI.* instead.
+// This separates concerns: rename an element ID in one place,
+// not scattered across 15 functions.
+// ═══════════════════════════════════════════════════════════════
+const UI = (() => {
+  const $   = id => document.getElementById(id);
+  const val = id => $(id).value.trim();
+
+  const AV_COLORS  = ['#58a6ff','#3fb950','#d29922','#f85149','#a5d6ff','#da9ff9','#39d353'];
+  const CAT_COLORS = { Science:'badge-blue', Engineering:'badge-amber', Arts:'badge-coral', Commerce:'badge-green', Technology:'badge-blue' };
+  const { esc }    = Security;
+
+  const initials = n   => n.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase();
+  const avColor  = id  => AV_COLORS[id % AV_COLORS.length];
+  const catBadge = cat => CAT_COLORS[cat] || 'badge-blue';
+  const emptyRow = (cols, msg) => `<tr><td colspan="${cols}"><div class="empty"><p>${msg}</p></div></td></tr>`;
+
+  // Toast — clears previous timer so rapid-fire toasts don't stack
+  let _toastTimer;
+  function showToast(msg, type = 'success') {
+    clearTimeout(_toastTimer);
+    const t = $('toast');
+    t.className = `toast ${type} show`;
+    $('toast-msg').textContent = msg; // textContent — never innerHTML for external data
+    _toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  // Button loading wrapper — always restores state in finally
+  function withBtn(id, label, fn) {
+    const btn = $(id);
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+    return Promise.resolve(fn()).finally(() => { btn.disabled = false; btn.innerHTML = label; });
+  }
+
+  function showPage(id, node) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    $('page-' + id).classList.add('active');
+    if (node) node.classList.add('active');
+    renderDashboard();
+  }
+
+  const hideForm = id => $(id).style.display = 'none';
+  const showForm = id => $(id).style.display = 'block';
+
+  function renderStudentTable() {
+    const q    = val('student-search').toLowerCase();
+    const rows = State.get('students').filter(s =>
+      !q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)
+    );
+    $('student-table-body').innerHTML = rows.length
+      ? rows.map(s => `
+          <tr>
+            <td style="color:var(--muted);font-size:12px;">#${s.id}</td>
+            <td><div class="cell-user"><div class="av" style="background:${avColor(s.id)}">${initials(esc(s.name))}</div><span>${esc(s.name)}</span></div></td>
+            <td style="color:var(--muted);">${esc(s.email)}</td>
+            <td>${esc(String(s.age))}</td>
+            <td><button class="btn btn-danger" onclick="Actions.deleteStudent(${s.id})">Remove</button></td>
+          </tr>`).join('')
+      : emptyRow(5, 'No students found.');
+  }
+
+  function renderCourseTable() {
+    const courses = State.get('courses');
+    $('course-table-body').innerHTML = courses.length
+      ? courses.map(c => `
+          <tr>
+            <td style="color:var(--muted);font-size:12px;">#${c.id}</td>
+            <td style="font-weight:500;">${esc(c.name)}</td>
+            <td style="color:var(--muted);">${esc(c.duration || '—')}</td>
+            <td><span class="badge ${catBadge(c.category)}">${esc(c.category || '—')}</span></td>
+            <td>${c.enrolledCount} / ${c.seats}</td>
+            <td><button class="btn btn-danger" onclick="Actions.deleteCourse(${c.id})">Remove</button></td>
+          </tr>`).join('')
+      : emptyRow(6, 'No courses yet.');
+  }
+
+  function renderEnrollTable() {
+    const enrollments = State.get('enrollments');
+    $('enroll-table-body').innerHTML = enrollments.length
+      ? enrollments.map((e, i) => `
+          <tr>
+            <td style="color:var(--muted);font-size:12px;">${i + 1}</td>
+            <td><div class="cell-user"><div class="av" style="background:${avColor(e.studentId)}">${initials(esc(e.studentName))}</div><span>${esc(e.studentName)}</span></div></td>
+            <td style="font-weight:500;">${esc(e.courseName)}</td>
+            <td><span class="badge ${catBadge(e.category)}">${esc(e.category || '—')}</span></td>
+            <td><button class="btn btn-danger" onclick="Actions.deleteEnrollment(${e.id})">Remove</button></td>
+          </tr>`).join('')
+      : emptyRow(5, 'No enrollments yet.');
+  }
+
+  function renderDashboard() {
+    const students        = State.get('students');
+    const courses         = State.get('courses');
+    const enrollments     = State.get('enrollments');
+    const enrollCountById = State.get('enrollCountById'); // O(1) map, not O(n) .filter()
+
+    $('stat-students').textContent = students.length;
+    $('stat-courses').textContent  = courses.length;
+    $('stat-enroll').textContent   = enrollments.length;
+    $('stat-avg').textContent      = students.length
+      ? (enrollments.length / students.length).toFixed(1) : '0';
+
+    const recent = [...students].reverse().slice(0, 5);
+    $('dash-students-body').innerHTML = recent.length
+      ? recent.map(s => {
+          const cnt = enrollCountById[s.id] || 0; // was O(n) .filter() — now O(1)
+          return `
+            <tr>
+              <td><div class="cell-user"><div class="av" style="background:${avColor(s.id)}">${initials(esc(s.name))}</div><span>${esc(s.name)}</span></div></td>
+              <td style="color:var(--muted);">${esc(s.email)}</td>
+              <td>${s.age}</td>
+              <td><span class="badge badge-green">${cnt} course${cnt !== 1 ? 's' : ''}</span></td>
+            </tr>`;
+        }).join('')
+      : emptyRow(4, 'No students added yet.');
+  }
+
+  function populateEnrollForm() {
+    $('e-student').innerHTML = State.get('students').length
+      ? State.get('students').map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')
+      : '<option disabled>No students available</option>';
+    $('e-course').innerHTML = State.get('courses').length
+      ? State.get('courses').map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')
+      : '<option disabled>No courses available</option>';
+    showForm('enroll-panel');
+  }
+
+  return { $, val, showToast, withBtn, showPage, hideForm, showForm, renderStudentTable, renderCourseTable, renderEnrollTable, renderDashboard, populateEnrollForm };
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// MODULE 6 — Actions (Business Logic)
+// Orchestrates: API call → State update → UI render.
+// No document.getElementById here. Decoupled from DOM entirely.
+// ═══════════════════════════════════════════════════════════════
+const Actions = (() => {
+
+  // Generic load helper — deduplicates the load/error/loading pattern
+  async function _load(key, apiFn, renderFn) {
+    State.setLoading(key, true);
+    State.setError(key, null);
+    try {
+      State.set(key, await apiFn());
+      renderFn();
+      UI.renderDashboard();
+    } catch (err) {
+      State.setError(key, err.message);
+      UI.showToast(err.message, 'error');
+    } finally {
+      State.setLoading(key, false);
+    }
+  }
+
+  const loadStudents    = () => _load('students',    StudentAPI.getAll,    UI.renderStudentTable);
+  const loadCourses     = () => _load('courses',     CourseAPI.getAll,     UI.renderCourseTable);
+  const loadEnrollments = () => _load('enrollments', EnrollmentAPI.getAll, UI.renderEnrollTable);
+
+  async function addStudent() {
+    const name = UI.val('s-name'), email = UI.val('s-email'), age = parseInt(UI.$('s-age').value);
+    const err  = Validate.student(name, email, age);
+    if (err) return UI.showToast(err, 'error');
+
+    await UI.withBtn('btn-save-student', 'Save Student', async () => {
+      try {
+        await StudentAPI.create({ name, email, age });
+        UI.hideForm('add-student-panel');
+        ['s-name','s-email','s-age'].forEach(id => UI.$(id).value = '');
+        await loadStudents();
+        UI.showToast('Student added successfully!');
+      } catch (err) { UI.showToast(err.message, 'error'); }
+    });
+  }
+
+  async function deleteStudent(id) {
+    if (!confirm('Remove this student? Their enrollments will also be deleted.')) return;
+    try {
+      await StudentAPI.remove(id);
+      await Promise.all([loadStudents(), loadEnrollments()]);
+      UI.showToast('Student removed.');
+    } catch (err) { UI.showToast(err.message, 'error'); }
+  }
+
+  async function addCourse() {
+    const name = UI.val('c-name'), duration = UI.val('c-dur');
+    const category = UI.$('c-cat').value, seats = parseInt(UI.$('c-seats').value) || 30;
+    const err = Validate.course(name, duration, seats);
+    if (err) return UI.showToast(err, 'error');
+
+    await UI.withBtn('btn-save-course', 'Save Course', async () => {
+      try {
+        await CourseAPI.create({ name, duration, category, seats });
+        UI.hideForm('add-course-panel');
+        ['c-name','c-dur','c-seats'].forEach(id => UI.$(id).value = '');
+        await loadCourses();
+        UI.showToast('Course added!');
+      } catch (err) { UI.showToast(err.message, 'error'); }
+    });
+  }
+
+  async function deleteCourse(id) {
+    if (!confirm('Remove this course? All enrollments for it will be deleted too.')) return;
+    try {
+      await CourseAPI.remove(id);
+      await Promise.all([loadCourses(), loadEnrollments()]);
+      UI.showToast('Course removed.');
+    } catch (err) { UI.showToast(err.message, 'error'); }
+  }
+
+  async function addEnrollment() {
+    const studentId = parseInt(UI.$('e-student').value);
+    const courseId  = parseInt(UI.$('e-course').value);
+    if (!studentId || !courseId) return UI.showToast('Please select a student and course.', 'error');
+
+    await UI.withBtn('btn-save-enroll', 'Confirm Enrollment', async () => {
+      try {
+        await EnrollmentAPI.create({ studentId, courseId });
+        UI.hideForm('enroll-panel');
+        await Promise.all([loadEnrollments(), loadCourses()]);
+        UI.showToast('Enrollment confirmed!');
+      } catch (err) { UI.showToast(err.message, 'error'); } // Http already parsed 400 body
+    });
+  }
+
+  async function deleteEnrollment(id) {
+    try {
+      await EnrollmentAPI.remove(id);
+      await Promise.all([loadEnrollments(), loadCourses()]);
+      UI.showToast('Enrollment removed.');
+    } catch (err) { UI.showToast(err.message, 'error'); }
+  }
+
+  return { loadStudents, loadCourses, loadEnrollments, addStudent, deleteStudent, addCourse, deleteCourse, addEnrollment, deleteEnrollment };
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// MODULE 7 — Settings
+// ═══════════════════════════════════════════════════════════════
+function loadSettings() {
+  const url   = localStorage.getItem('API_URL');
+  const theme = localStorage.getItem('THEME');
+  if (url)   UI.$('api-url').value = url;
+  if (theme) UI.$('theme').value   = theme;
+}
+
+function saveSettings() {
+  localStorage.setItem('API_URL', UI.$('api-url').value.trim());
+  localStorage.setItem('THEME',   UI.$('theme').value);
+  UI.showToast('Settings saved! Reload the page to apply.');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GLOBAL BRIDGE
+// HTML onclick="" attributes require global functions.
+// This thin shim exposes module methods to window — keeping all
+// modules clean and self-contained while the HTML stays unchanged.
+// ═══════════════════════════════════════════════════════════════
+Object.assign(window, {
+  showPage:           UI.showPage,
+  hideForm:           UI.hideForm,
+  renderStudentTable: UI.renderStudentTable,
+  showAddStudentForm: () => UI.showForm('add-student-panel'),
+  showAddCourseForm:  () => UI.showForm('add-course-panel'),
+  showEnrollForm:     UI.populateEnrollForm,
+  addStudent:         Actions.addStudent,
+  addCourse:          Actions.addCourse,
+  addEnrollment:      Actions.addEnrollment,
+  saveSettings,
+  Actions,  // exposed for onclick="Actions.deleteStudent(id)" in rendered table rows
+});
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT — parallel load, single await
+// ═══════════════════════════════════════════════════════════════
+(async () => {
+  loadSettings();
+  await Promise.all([Actions.loadStudents(), Actions.loadCourses(), Actions.loadEnrollments()]);
+})();
+</script>
+</body>
+</html>

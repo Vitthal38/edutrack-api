@@ -32,17 +32,19 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Services
 builder.Services.AddScoped<TokenService>();
 
-// ✅ SIMPLE CORS (NO CONFUSION)
+// ✅ PROPER CORS (FINAL FIX)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:5173",
-            "https://edutrack-frontend-bniu.onrender.com"
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod();
+        policy
+            .WithOrigins(
+                "http://localhost:5173",
+                "https://edutrack-frontend-bniu.onrender.com"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -74,10 +76,11 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // ============================================
-// MIDDLEWARE
+// MIDDLEWARE (ORDER MATTERS)
 // ============================================
 
-// ✅ ALWAYS USE SAME POLICY
+app.UseRouting(); // ✅ important
+
 app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
@@ -105,5 +108,9 @@ using (var scope = app.Services.CreateScope())
             CreatedAt = DateTime.UtcNow
         });
         db.SaveChanges();
+    }
+}
+
+app.Run();
     }
 }

@@ -7,7 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Render provides PORT env var; default to 5097 locally
+// PORT for Render
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5097";
 builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 
@@ -18,43 +18,35 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
-        options.JsonSerializerOptions.ReferenceHandler = 
+        options.JsonSerializerOptions.ReferenceHandler =
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
-// Database — read connection string from config (env var in prod)
+// Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=edutrack.db";
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(connectionString));
 
-// Register custom services
+// Services
 builder.Services.AddScoped<TokenService>();
 
-// CORS — different policies for dev vs prod
+// ✅ SIMPLE CORS (NO CONFUSION)
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("dev", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-
-    options.AddPolicy("prod", policy =>
-    {
-        var origins = Environment.GetEnvironmentVariable("ALLOWED_ORIGINS")
-            ?.Split(',', StringSplitOptions.RemoveEmptyEntries)
-            ?? new[] { "http://localhost:5173" };
-
-        policy.WithOrigins(origins)
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.WithOrigins(
+            "http://localhost:5173",
+            "https://edutrack-frontend-bniu.onrender.com"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
     });
 });
 
-// JWT Authentication — read key from env var first, fallback to appsettings
+// JWT
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
     ?? jwtSettings["Key"]
@@ -85,7 +77,8 @@ var app = builder.Build();
 // MIDDLEWARE
 // ============================================
 
-app.UseCors(app.Environment.IsDevelopment() ? "dev" : "prod");
+// ✅ ALWAYS USE SAME POLICY
+app.UseCors("AllowFrontend");
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -93,7 +86,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 // ============================================
-// SEED ADMIN USER
+// SEED ADMIN
 // ============================================
 
 using (var scope = app.Services.CreateScope())
@@ -114,5 +107,3 @@ using (var scope = app.Services.CreateScope())
         db.SaveChanges();
     }
 }
-
-app.Run();

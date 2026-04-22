@@ -43,8 +43,7 @@ builder.Services.AddCors(options =>
                 "https://edutrack-frontend-bniu.onrender.com"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+            .AllowAnyMethod();
     });
 });
 

@@ -11,3 +11,4 @@ obj/
 Thumbs.db
 *.log
 appsettings.Development.json
+edutrack/

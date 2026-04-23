@@ -18,9 +18,13 @@ public class TokenService
     public string GenerateToken(User user)
     {
         var jwtSettings = _config.GetSection("Jwt");
-        var key = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtSettings["Key"]!)
-        );
+
+        // Use JWT_KEY env variable if available, fallback to appsettings
+        var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
+            ?? jwtSettings["Key"]
+            ?? throw new InvalidOperationException("JWT Key is not configured");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
         var claims = new[]
